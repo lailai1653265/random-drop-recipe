@@ -34,13 +34,11 @@ const Icons = {
 
 type DataSource = 'original' | 'custom';
 
-// Use require.context or import.meta.glob to load original data if possible,
-// but for static site in vite, we might need a listing or separate fetch.
-// Since we are running in browser context for the user, we will try to fetch if served,
-// or use import.meta.glob if Vite is capable.
-// For now, let's assume we can use import.meta.glob in Vite.
-const outputLootFiles = import.meta.glob('./data/original/loot/*.json', { as: 'raw', eager: true });
-const outputRecipeFiles = import.meta.glob('./data/original/recipes/*.json', { as: 'raw', eager: true });
+// Use recursive glob to find nested files
+const outputLootFiles = import.meta.glob('./data/original/loot/**/*.json', { as: 'raw', eager: true });
+const outputRecipeFiles = import.meta.glob('./data/original/recipes/**/*.json', { as: 'raw', eager: true });
+const outputLootZips = import.meta.glob('./data/original/loot/**/*.zip', { as: 'url', eager: true });
+const outputRecipeZips = import.meta.glob('./data/original/recipes/**/*.zip', { as: 'url', eager: true });
 
 const App: React.FC = () => {
   const fileContentsMap = useRef<Map<string, { name: string, content: string, type: 'loot' | 'recipe' }>>(new Map());
@@ -64,6 +62,7 @@ const App: React.FC = () => {
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [originalLoading, setOriginalLoading] = useState(false);
 
   const lootInputRef = useRef<HTMLInputElement>(null);
   const recipeInputRef = useRef<HTMLInputElement>(null);
@@ -83,24 +82,64 @@ const App: React.FC = () => {
     }
   }, [dataSource]);
 
-  const loadOriginalData = () => {
+  const loadOriginalData = async () => {
+    setOriginalLoading(true);
+    setError(null);
     fileContentsMap.current.clear();
     let lCount = 0;
     let rCount = 0;
 
-    Object.entries(outputLootFiles).forEach(([path, content]) => {
-      const name = path.split('/').pop() || 'unknown.json';
-      fileContentsMap.current.set(`loot:${name}`, { name, content: content as unknown as string, type: 'loot' });
-      lCount++;
-    });
+    try {
+      // Process JSONs
+      Object.entries(outputLootFiles).forEach(([path, content]) => {
+        const name = path.split('/').pop() || 'unknown.json';
+        fileContentsMap.current.set(`loot:${name}`, { name, content: content as unknown as string, type: 'loot' });
+        lCount++;
+      });
 
-    Object.entries(outputRecipeFiles).forEach(([path, content]) => {
-      const name = path.split('/').pop() || 'unknown.json';
-      fileContentsMap.current.set(`recipe:${name}`, { name, content: content as unknown as string, type: 'recipe' });
-      rCount++;
-    });
+      Object.entries(outputRecipeFiles).forEach(([path, content]) => {
+        const name = path.split('/').pop() || 'unknown.json';
+        fileContentsMap.current.set(`recipe:${name}`, { name, content: content as unknown as string, type: 'recipe' });
+        rCount++;
+      });
 
-    setCounts({ loot: lCount, recipe: rCount });
+      // Process ZIPs
+      const processZip = async (url: string, type: 'loot' | 'recipe') => {
+        try {
+          const response = await fetch(url);
+          const blob = await response.blob();
+          const zip = await JSZip.loadAsync(blob);
+
+          const tasks: Promise<void>[] = [];
+          zip.forEach((path, entry) => {
+            const pureName = entry.name.split('/').pop()?.toLowerCase().trim() || "";
+            if (!entry.dir && pureName.endsWith('.json') && !pureName.startsWith('.')) {
+              tasks.push(entry.async('string').then(content => {
+                fileContentsMap.current.set(`${type}:${pureName}`, { name: pureName, content, type: type });
+                if (type === 'loot') lCount++;
+                else rCount++;
+              }));
+            }
+          });
+          await Promise.all(tasks);
+        } catch (e) {
+          console.error(`Failed to load zip ${url}`, e);
+        }
+      };
+
+      const zipTasks: Promise<void>[] = [];
+      Object.values(outputLootZips).forEach(url => zipTasks.push(processZip(url as unknown as string, 'loot')));
+      Object.values(outputRecipeZips).forEach(url => zipTasks.push(processZip(url as unknown as string, 'recipe')));
+
+      await Promise.all(zipTasks);
+
+    } catch (err) {
+      console.error("Error loading original data", err);
+      setError("Failed to load some original data files.");
+    } finally {
+      setCounts({ loot: lCount, recipe: rCount });
+      setOriginalLoading(false);
+    }
   };
 
 
@@ -452,6 +491,19 @@ const App: React.FC = () => {
             </div>
           )}
 
+          {/* Warning for Original Data empty state */}
+          {dataSource === 'original' && counts.loot === 0 && counts.recipe === 0 && (
+            <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center gap-3">
+              <div className="text-amber-500">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+              </div>
+              <div className="text-xs text-amber-200">
+                <p className="font-bold">No original data found!</p>
+                <p className="opacity-70">Please add .json files to <code>data/original/loot</code> or <code>data/original/recipes</code> and refresh the page.</p>
+              </div>
+            </div>
+          )}
+
           {error && (
             <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 text-xs font-bold text-center animate-shake">
               {error}
@@ -460,10 +512,10 @@ const App: React.FC = () => {
 
           <button
             onClick={handleDownload}
-            disabled={isGenerating || (counts.loot === 0 && counts.recipe === 0)}
-            className={`group relative w-full py-8 rounded-[2rem] font-black text-2xl md:text-3xl tracking-tight transition-all uppercase ${isGenerating ? 'bg-slate-800 text-slate-700 cursor-wait' : (counts.loot === 0 && counts.recipe === 0) ? 'bg-slate-800/50 text-slate-700 cursor-not-allowed' : 'bg-white text-slate-950 hover:scale-[1.01] hover:shadow-xl active:scale-[0.98]'}`}
+            disabled={isGenerating || originalLoading}
+            className={`group relative w-full py-8 rounded-[2rem] font-black text-2xl md:text-3xl tracking-tight transition-all uppercase ${isGenerating || originalLoading ? 'bg-slate-800 text-slate-700 cursor-wait' : (counts.loot === 0 && counts.recipe === 0) ? 'bg-slate-800 text-slate-500 hover:bg-slate-800' : 'bg-white text-slate-950 hover:scale-[1.01] hover:shadow-xl active:scale-[0.98]'}`}
           >
-            {isGenerating ? t('generating') : t('generateAndDownload')}
+            {isGenerating ? t('generating') : originalLoading ? 'Loading...' : t('generateAndDownload')}
           </button>
         </div>
       </div>
