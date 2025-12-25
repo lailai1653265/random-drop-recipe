@@ -4,7 +4,6 @@ import { GeneratorConfig, MinecraftVersion, CustomFile } from './types';
 import { buildDataPack } from './utils/datapackBuilder';
 import { VERSION_FORMATS } from './constants';
 import JSZip from 'jszip';
-import { generatePackDescription } from './services/geminiService';
 
 const Icons = {
   Dice: () => (
@@ -33,7 +32,7 @@ const App: React.FC = () => {
   const [config, setConfig] = useState<Omit<GeneratorConfig, 'customFiles'>>({
     seed: Math.random().toString(36).substring(7),
     packName: 'Randomizer_1.21',
-    description: '正在生成描述...',
+    description: '自定義隨機化資料包',
     version: '1.21.10',
     randomizeLoot: true,
     randomizeRecipes: true,
@@ -49,17 +48,10 @@ const App: React.FC = () => {
   const lootInputRef = useRef<HTMLInputElement>(null);
   const recipeInputRef = useRef<HTMLInputElement>(null);
 
+  // 當種子或名稱改變時，更新本地描述
   useEffect(() => {
-    const updateDescription = async () => {
-      try {
-        const desc = await generatePackDescription(config.seed, config.packName);
-        setConfig(prev => ({ ...prev, description: desc }));
-      } catch (e) {
-        console.error("Gemini description update failed", e);
-      }
-    };
-    const timer = setTimeout(updateDescription, 800);
-    return () => clearTimeout(timer);
+    const newDesc = `${config.packName} - 隨機種子: ${config.seed}`;
+    setConfig(prev => ({ ...prev, description: newDesc }));
   }, [config.seed, config.packName]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, forcedType: 'loot' | 'recipe') => {
@@ -321,15 +313,15 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          {/* AI Info Card */}
+          {/* Metadata Card (No AI) */}
           <div className="p-8 bg-slate-950/60 border border-slate-800 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-8">
             <div className="flex items-center gap-6">
                <div className="w-12 h-12 bg-cyan-500/5 rounded-2xl flex items-center justify-center text-cyan-500/30 border border-slate-800">
                   <Icons.Cpu />
                </div>
                <div>
-                  <label className="text-[10px] font-black text-slate-600 uppercase block tracking-widest mb-1">AI 生成的資料包描述</label>
-                  <p className="text-sm text-slate-400 italic font-medium">{config.description}</p>
+                  <label className="text-[10px] font-black text-slate-600 uppercase block tracking-widest mb-1">資料包描述 (Pack Description)</label>
+                  <p className="text-sm text-slate-400 font-medium">{config.description}</p>
                </div>
             </div>
             {(counts.loot > 0 || counts.recipe > 0) && !isGenerating && (
