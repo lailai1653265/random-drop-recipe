@@ -1,0 +1,5 @@
+{
+  "name": "Copy of Minecraft 1.21.10 Randomizer Generator",
+  "description": "A powerful web-based tool to generate random loot tables and crafting recipes for Minecraft 1.21.10 data packs. Uses seed-based randomization and AI-assisted theme generation.",
+  "requestFramePermissions": []
+}
