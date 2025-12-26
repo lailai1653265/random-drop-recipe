@@ -1,8 +1,8 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { GeneratorConfig, MinecraftVersion, CustomFile } from './types';
 import { buildDataPack } from './utils/datapackBuilder';
 import { translations, Language } from './locales';
+import { VERSION_FORMATS, VERSION_LABELS } from './constants';
 import JSZip from 'jszip';
 
 const Icons = {
@@ -34,11 +34,12 @@ const Icons = {
 
 type DataSource = 'original' | 'custom';
 
-// Use recursive glob to find nested files
-const outputLootFiles = import.meta.glob('./data/original/loot/**/*.json', { as: 'raw', eager: true });
-const outputRecipeFiles = import.meta.glob('./data/original/recipes/**/*.json', { as: 'raw', eager: true });
-const outputLootZips = import.meta.glob('./data/original/loot/**/*.zip', { as: 'url', eager: true });
-const outputRecipeZips = import.meta.glob('./data/original/recipes/**/*.zip', { as: 'url', eager: true });
+// Use recursive glob to find nested files but keep keys to filter later
+const outputLootFiles = import.meta.glob('./data/original/**/loot/**/*.json', { as: 'raw', eager: true });
+const outputRecipeFiles = import.meta.glob('./data/original/**/recipes/**/*.json', { as: 'raw', eager: true });
+const outputLootZips = import.meta.glob('./data/original/**/loot/**/*.zip', { as: 'url', eager: true });
+const outputRecipeZips = import.meta.glob('./data/original/**/recipes/**/*.zip', { as: 'url', eager: true });
+const outputMcMeta = import.meta.glob('./data/original/**/mcmeta/pack.mcmeta', { as: 'raw', eager: true });
 
 const App: React.FC = () => {
   const fileContentsMap = useRef<Map<string, { name: string, content: string, type: 'loot' | 'recipe' }>>(new Map());
@@ -50,7 +51,7 @@ const App: React.FC = () => {
     seed: Math.random().toString(36).substring(7),
     packName: 'Randomizer_1.21',
     description: 'Datapack',
-    version: '1.21.10',
+    version: '1.21',
     randomizeLoot: true,
     randomizeRecipes: true,
     shufflingMode: 'total',
@@ -63,6 +64,7 @@ const App: React.FC = () => {
   const [status, setStatus] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [originalLoading, setOriginalLoading] = useState(false);
+  const [customMcmeta, setCustomMcmeta] = useState<string | undefined>(undefined);
 
   const lootInputRef = useRef<HTMLInputElement>(null);
   const recipeInputRef = useRef<HTMLInputElement>(null);
@@ -72,7 +74,7 @@ const App: React.FC = () => {
     setConfig(prev => ({ ...prev, description: newDesc }));
   }, [config.seed, config.packName, lang]);
 
-  // Handle data source change
+  // Handle data source or version change
   useEffect(() => {
     if (dataSource === 'original') {
       loadOriginalData();
@@ -80,27 +82,40 @@ const App: React.FC = () => {
       // Clear buffer when switching to custom so user can upload
       clearBuffers();
     }
-  }, [dataSource]);
+  }, [dataSource, config.version]);
 
   const loadOriginalData = async () => {
     setOriginalLoading(true);
     setError(null);
+    setCustomMcmeta(undefined);
     fileContentsMap.current.clear();
     let lCount = 0;
     let rCount = 0;
 
+    const versionKey = `/${config.version}/`;
+
     try {
+      // Check for pack.mcmeta
+      const mcmetaKey = Object.keys(outputMcMeta).find(k => k.includes(`/${config.version}/mcmeta/`));
+      if (mcmetaKey) {
+        setCustomMcmeta(outputMcMeta[mcmetaKey] as unknown as string);
+      }
+
       // Process JSONs
       Object.entries(outputLootFiles).forEach(([path, content]) => {
-        const name = path.split('/').pop() || 'unknown.json';
-        fileContentsMap.current.set(`loot:${name}`, { name, content: content as unknown as string, type: 'loot' });
-        lCount++;
+        if (path.includes(versionKey)) {
+          const name = path.split('/').pop() || 'unknown.json';
+          fileContentsMap.current.set(`loot:${name}`, { name, content: content as unknown as string, type: 'loot' });
+          lCount++;
+        }
       });
 
       Object.entries(outputRecipeFiles).forEach(([path, content]) => {
-        const name = path.split('/').pop() || 'unknown.json';
-        fileContentsMap.current.set(`recipe:${name}`, { name, content: content as unknown as string, type: 'recipe' });
-        rCount++;
+        if (path.includes(versionKey)) {
+          const name = path.split('/').pop() || 'unknown.json';
+          fileContentsMap.current.set(`recipe:${name}`, { name, content: content as unknown as string, type: 'recipe' });
+          rCount++;
+        }
       });
 
       // Process ZIPs
@@ -128,8 +143,12 @@ const App: React.FC = () => {
       };
 
       const zipTasks: Promise<void>[] = [];
-      Object.values(outputLootZips).forEach(url => zipTasks.push(processZip(url as unknown as string, 'loot')));
-      Object.values(outputRecipeZips).forEach(url => zipTasks.push(processZip(url as unknown as string, 'recipe')));
+      Object.entries(outputLootZips).forEach(([path, url]) => {
+        if (path.includes(versionKey)) zipTasks.push(processZip(url as unknown as string, 'loot'));
+      });
+      Object.entries(outputRecipeZips).forEach(([path, url]) => {
+        if (path.includes(versionKey)) zipTasks.push(processZip(url as unknown as string, 'recipe'));
+      });
 
       await Promise.all(zipTasks);
 
@@ -230,21 +249,9 @@ const App: React.FC = () => {
         };
 
         const blob = await buildDataPack(fullConfig, (p, s) => {
-          // Note: DataPack builder still returns Chinese strings if not modified, 
-          // but we can try to map them or just let them be for now as per plan to minimal modification on builder
-          // Or we pass a simple translator. 
-          // For now, let's assume builder emits raw step keys or just accept it might be mixed unless we refactor builder.
-          // But to support i18n fully, we should map the status from the builder.
-          // As a quick fix, we can assume 's' is one of the keys or a formatted string.
-          // However, the builder uses hardcoded strings. 
-          // Providing a best-effort translation here if the builder returns known strings.
-          // Actually, let's just use the string for now, or updating the builder is safer.
-          // Given the task, let's just display what builder sends, 
-          // but to be perfect we should have updated the builder. 
-          // I'll stick to displaying 's' unless matched against a key.
           setProgress(p);
           setStatus(s);
-        });
+        }, customMcmeta);
 
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -293,7 +300,7 @@ const App: React.FC = () => {
 
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan-950/30 border border-cyan-500/20 text-cyan-400 text-[10px] font-black tracking-[0.2em] uppercase mb-4">
           <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></div>
-          {t('mcVersionSupport')}
+          {`Minecraft ${VERSION_LABELS[config.version]} ${lang === 'en' ? 'Supported' : '支持'}`}
         </div>
         <h1 className="text-4xl md:text-6xl font-black bg-gradient-to-b from-white to-slate-600 bg-clip-text text-transparent mb-4 uppercase tracking-tighter">
           {t('title')}
@@ -377,15 +384,31 @@ const App: React.FC = () => {
 
           </div>
 
-          <div className="space-y-3 group">
-            <label className="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">{t('packName')}</label>
-            <input
-              type="text"
-              value={config.packName}
-              onChange={(e) => setConfig({ ...config, packName: e.target.value })}
-              className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-5 font-bold text-slate-200 focus:border-cyan-500 outline-none text-sm focus:ring-1 focus:ring-cyan-500/20 transition-all"
-              placeholder={t('packNamePlaceholder')}
-            />
+          {/* Pack Name and Version */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+            <div className="space-y-3 group">
+              <label className="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">{t('packName')}</label>
+              <input
+                type="text"
+                value={config.packName}
+                onChange={(e) => setConfig({ ...config, packName: e.target.value })}
+                className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-5 font-bold text-slate-200 focus:border-cyan-500 outline-none text-sm focus:ring-1 focus:ring-cyan-500/20 transition-all"
+                placeholder={t('packNamePlaceholder')}
+              />
+            </div>
+
+            <div className="space-y-3 group">
+              <label className="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">Minecraft Version</label>
+              <select
+                value={config.version}
+                onChange={(e) => setConfig({ ...config, version: e.target.value as MinecraftVersion })}
+                className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-5 font-bold text-slate-200 focus:border-cyan-500 outline-none text-sm focus:ring-1 focus:ring-cyan-500/20 transition-all appearance-none"
+              >
+                {Object.keys(VERSION_FORMATS).map(ver => (
+                  <option key={ver} value={ver}>{VERSION_LABELS[ver] || ver}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Master Protocols */}
@@ -492,14 +515,14 @@ const App: React.FC = () => {
           )}
 
           {/* Warning for Original Data empty state */}
-          {dataSource === 'original' && counts.loot === 0 && counts.recipe === 0 && (
+          {dataSource === 'original' && !originalLoading && counts.loot === 0 && counts.recipe === 0 && (
             <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center gap-3">
               <div className="text-amber-500">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
               </div>
               <div className="text-xs text-amber-200">
-                <p className="font-bold">No original data found!</p>
-                <p className="opacity-70">Please add .json files to <code>data/original/loot</code> or <code>data/original/recipes</code> and refresh the page.</p>
+                <p className="font-bold">No original data found for version {VERSION_LABELS[config.version] || config.version}!</p>
+                <p className="opacity-70">Please add files to <code>data/original/{config.version}/loot</code> or <code>recipes</code> and refresh.</p>
               </div>
             </div>
           )}

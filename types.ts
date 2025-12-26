@@ -4,7 +4,7 @@ export enum RandomizerType {
   RECIPE = 'RECIPE'
 }
 
-export type MinecraftVersion = '1.21.11' | '1.21.10' | '1.21' | '1.20.6' | '1.20.4' | '1.19.4';
+export type MinecraftVersion = '1.21' | '1.21.2' | '1.21.4' | '1.21.5' | '1.21.7' | '1.21.6' | '1.21.9' | '1.21.11';
 
 export interface CustomFile {
   name: string;

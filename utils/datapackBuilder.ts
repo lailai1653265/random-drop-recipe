@@ -6,7 +6,8 @@ import { SeededRandom } from './randomizer';
 
 export const buildDataPack = async (
   config: GeneratorConfig,
-  onProgress?: (percent: number, step: string) => void
+  onProgress?: (progress: number, status: string) => void,
+  customMcmeta?: string
 ): Promise<Blob> => {
   const fileCount = config.customFiles.length;
   if (fileCount === 0) {
@@ -16,11 +17,15 @@ export const buildDataPack = async (
   onProgress?.(5, "正在初始化引擎");
   const zip = new JSZip();
   const random = new SeededRandom(config.seed);
-  const packFormat = config.version === '1.21.11' ? 94 : (VERSION_FORMATS[config.version] || 48);
-  
-  const lootFiles: {name: string, content: string}[] = [];
-  const recipeFiles: {name: string, content: any}[] = [];
-  
+
+
+
+  // 2. Create pack.png (optional, maybe skip or add default)
+  // zip.file('pack.png', ...);
+
+  const lootFiles: { name: string, content: string }[] = [];
+  const recipeFiles: { name: string, content: any }[] = [];
+
   onProgress?.(15, "正在對檔案進行分類");
   for (let i = 0; i < fileCount; i++) {
     const f = config.customFiles[i];
@@ -37,15 +42,20 @@ export const buildDataPack = async (
   }
 
   onProgress?.(45, "正在寫入 pack.mcmeta");
-  zip.file("pack.mcmeta", JSON.stringify({
-    pack: {
-      description: config.description,
-      pack_format: packFormat
-    }
-  }, null, 2));
+  if (customMcmeta) {
+    zip.file('pack.mcmeta', customMcmeta);
+  } else {
+    const packFormat = VERSION_FORMATS[config.version] || 48;
+    zip.file("pack.mcmeta", JSON.stringify({
+      pack: {
+        description: config.description,
+        pack_format: packFormat
+      }
+    }, null, 2));
+  }
 
   onProgress?.(60, "正在封裝數據");
-  
+
   if (config.randomizeLoot && lootFiles.length > 0) {
     onProgress?.(65, "正在進行掉落物隨機化");
     const contents = lootFiles.map(f => f.content);
@@ -74,9 +84,9 @@ export const buildDataPack = async (
 
   onProgress?.(85, "正在生成最終壓縮檔");
 
-  return await zip.generateAsync({ 
+  return await zip.generateAsync({
     type: "blob",
-    compression: "STORE" 
+    compression: "STORE"
   }, (metadata) => {
     const currentPercent = 85 + (metadata.percent * 0.15);
     onProgress?.(currentPercent, `正在打包: ${Math.round(metadata.percent)}%`);
