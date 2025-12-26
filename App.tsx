@@ -399,15 +399,24 @@ const App: React.FC = () => {
 
             <div className="space-y-3 group">
               <label className="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">Minecraft Version</label>
-              <select
-                value={config.version}
-                onChange={(e) => setConfig({ ...config, version: e.target.value as MinecraftVersion })}
-                className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-5 font-bold text-slate-200 focus:border-cyan-500 outline-none text-sm focus:ring-1 focus:ring-cyan-500/20 transition-all appearance-none"
-              >
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 {Object.keys(VERSION_FORMATS).map(ver => (
-                  <option key={ver} value={ver}>{VERSION_LABELS[ver] || ver}</option>
+                  <button
+                    key={ver}
+                    onClick={() => setConfig({ ...config, version: ver as MinecraftVersion })}
+                    className={`relative group overflow-hidden px-4 py-3 rounded-xl border text-sm font-bold transition-all duration-300 transform active:scale-95 ${config.version === ver
+                      ? 'bg-cyan-500/10 border-cyan-500 text-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.15)]'
+                      : 'bg-slate-950 border-slate-800 text-slate-500 hover:border-slate-700 hover:text-slate-400 hover:bg-slate-900'
+                      }`}
+                  >
+                    {/* Active Indicator Dot */}
+                    {config.version === ver && (
+                      <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-cyan-400 rounded-full shadow-[0_0_8px_rgba(6,182,212,0.8)] animate-pulse" />
+                    )}
+                    <span className="relative z-10">{VERSION_LABELS[ver] || ver}</span>
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
           </div>
 
