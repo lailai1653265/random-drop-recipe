@@ -47,7 +47,7 @@ const outputMcMeta = import.meta.glob('./data/original/**/mcmeta/pack.mcmeta', {
 const App: React.FC = () => {
   const fileContentsMap = useRef<Map<string, { name: string, content: string, type: 'loot' | 'recipe' }>>(new Map());
 
-  const [lang, setLang] = useState<Language>('zh');
+  const [lang, setLang] = useState<Language>('en');
   const t = (key: keyof typeof translations['zh']) => translations[lang][key];
 
   const [config, setConfig] = useState<Omit<GeneratorConfig, 'customFiles'>>({
@@ -307,7 +307,7 @@ const App: React.FC = () => {
           >
             <div className="flex items-center gap-2">
               <Icons.Globe />
-              {lang === 'en' ? '中文' : 'ENGLISH'}
+              {lang === 'en' ? '繁體中文' : 'ENGLISH'}
             </div>
           </button>
         </div>
