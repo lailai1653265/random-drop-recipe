@@ -1,7 +1,7 @@
 
 export const translations = {
     zh: {
-        title: 'MC 隨機生成器',
+        title: 'Minecraft 隨機生成器',
         subtitle: '掉落物與合成表',
         systemStatus: '狀態',
         ready: '就緒',
@@ -41,11 +41,11 @@ export const translations = {
         dataSource: '來源',
         sourceOriginal: '原版',
         sourceCustom: '自定義',
-        mcVersionSupport: '支持 MC 1.21+',
+        mcVersionSupport: '支持 Minecraft 1.21+',
         language: '語言'
     },
     en: {
-        title: 'MC Randomizer',
+        title: 'Minecraft Randomizer',
         subtitle: 'Loot & Recipe Randomization',
         systemStatus: 'STATUS',
         ready: 'READY',
@@ -83,9 +83,9 @@ export const translations = {
         finalizing: 'Finalizing...',
         packing: 'Packing...',
         dataSource: 'SOURCE',
-        sourceOriginal: 'Original',
+        sourceOriginal: 'Vanilla',
         sourceCustom: 'Custom',
-        mcVersionSupport: 'Supports MC 1.21+',
+        mcVersionSupport: 'Supports Minecraft 1.21+',
         language: 'LANGUAGE'
     }
 };

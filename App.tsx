@@ -29,6 +29,9 @@ const Icons = {
   ),
   Source: () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z" /><path d="M7 7h.01" /></svg>
+  ),
+  Github: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" /></svg>
   )
 };
 
@@ -49,15 +52,15 @@ const App: React.FC = () => {
 
   const [config, setConfig] = useState<Omit<GeneratorConfig, 'customFiles'>>({
     seed: Math.random().toString(36).substring(7),
-    packName: 'Randomizer_1.21',
+    packName: 'Randomizer',
     description: 'Datapack',
-    version: '1.21',
+    version: '1.21.11',
     randomizeLoot: true,
     randomizeRecipes: true,
     shufflingMode: 'total',
   });
 
-  const [dataSource, setDataSource] = useState<DataSource>('custom');
+  const [dataSource, setDataSource] = useState<DataSource>('original');
   const [counts, setCounts] = useState({ loot: 0, recipe: 0 });
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -154,7 +157,7 @@ const App: React.FC = () => {
 
     } catch (err) {
       console.error("Error loading original data", err);
-      setError("Failed to load some original data files.");
+      setError("Failed to load some Vanilla data files.");
     } finally {
       setCounts({ loot: lCount, recipe: rCount });
       setOriginalLoading(false);
@@ -288,15 +291,26 @@ const App: React.FC = () => {
     <div className="max-w-5xl mx-auto px-4 py-12 text-slate-300 font-sans selection:bg-cyan-500/30">
       {/* Header */}
       <div className="mb-12 text-center relative">
-        <button
-          onClick={() => setLang(l => l === 'en' ? 'zh' : 'en')}
-          className="absolute top-0 right-0 p-2 text-xs font-bold text-slate-500 hover:text-cyan-400 border border-slate-800 rounded-lg transition-all"
-        >
-          <div className="flex items-center gap-2">
-            <Icons.Globe />
-            {lang === 'en' ? '中文' : 'ENGLISH'}
-          </div>
-        </button>
+        <div className="absolute top-0 right-0 flex items-center gap-3">
+          <a
+            href="https://github.com/lailai1653265/random-drop-recipe"
+            target="_blank"
+            rel="noreferrer"
+            className="p-2 text-slate-500 hover:text-white border border-slate-800 rounded-lg transition-all hover:bg-slate-800 hover:border-slate-700"
+            title="GitHub"
+          >
+            <Icons.Github />
+          </a>
+          <button
+            onClick={() => setLang(l => l === 'en' ? 'zh' : 'en')}
+            className="p-2 text-xs font-bold text-slate-500 hover:text-cyan-400 border border-slate-800 rounded-lg transition-all hover:bg-slate-800 hover:border-slate-700"
+          >
+            <div className="flex items-center gap-2">
+              <Icons.Globe />
+              {lang === 'en' ? '中文' : 'ENGLISH'}
+            </div>
+          </button>
+        </div>
 
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan-950/30 border border-cyan-500/20 text-cyan-400 text-[10px] font-black tracking-[0.2em] uppercase mb-4">
           <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></div>
@@ -399,23 +413,21 @@ const App: React.FC = () => {
 
             <div className="space-y-3 group">
               <label className="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">Minecraft Version</label>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                {Object.keys(VERSION_FORMATS).map(ver => (
-                  <button
-                    key={ver}
-                    onClick={() => setConfig({ ...config, version: ver as MinecraftVersion })}
-                    className={`relative group overflow-hidden px-4 py-3 rounded-xl border text-sm font-bold transition-all duration-300 transform active:scale-95 ${config.version === ver
-                      ? 'bg-cyan-500/10 border-cyan-500 text-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.15)]'
-                      : 'bg-slate-950 border-slate-800 text-slate-500 hover:border-slate-700 hover:text-slate-400 hover:bg-slate-900'
-                      }`}
-                  >
-                    {/* Active Indicator Dot */}
-                    {config.version === ver && (
-                      <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-cyan-400 rounded-full shadow-[0_0_8px_rgba(6,182,212,0.8)] animate-pulse" />
-                    )}
-                    <span className="relative z-10">{VERSION_LABELS[ver] || ver}</span>
-                  </button>
-                ))}
+              <div className="relative">
+                <select
+                  value={config.version}
+                  onChange={(e) => setConfig({ ...config, version: e.target.value as MinecraftVersion })}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-5 font-bold text-slate-200 appearance-none focus:border-cyan-500 outline-none text-sm focus:ring-1 focus:ring-cyan-500/20 transition-all cursor-pointer"
+                >
+                  {Object.keys(VERSION_FORMATS).map(ver => (
+                    <option key={ver} value={ver} className="bg-slate-900 text-slate-200">
+                      {VERSION_LABELS[ver] || ver}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+                </div>
               </div>
             </div>
           </div>
@@ -530,7 +542,7 @@ const App: React.FC = () => {
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
               </div>
               <div className="text-xs text-amber-200">
-                <p className="font-bold">No original data found for version {VERSION_LABELS[config.version] || config.version}!</p>
+                <p className="font-bold">No Vanilla data found for version {VERSION_LABELS[config.version] || config.version}!</p>
                 <p className="opacity-70">Please add files to <code>data/original/{config.version}/loot</code> or <code>recipes</code> and refresh.</p>
               </div>
             </div>
@@ -555,7 +567,7 @@ const App: React.FC = () => {
       <div className="mt-16 flex items-center justify-center gap-8 opacity-20">
         <div className="h-px flex-1 bg-gradient-to-r from-transparent to-slate-700"></div>
         <div className="text-slate-500 text-[9px] font-black uppercase tracking-[0.4em] whitespace-nowrap">
-          MC RANDOMIZER V5 • 1.21.10 READY
+          MINECRAFT RANDOMIZER V5 • 1.21.10 READY
         </div>
         <div className="h-px flex-1 bg-gradient-to-l from-transparent to-slate-700"></div>
       </div>
