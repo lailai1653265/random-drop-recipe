@@ -565,20 +565,13 @@ const App: React.FC = () => {
         </div>
       </div>
 
-<<<<<<< HEAD
-      <div className="mt-16 flex items-center justify-center gap-8 opacity-20">
-        <div className="h-px flex-1 bg-gradient-to-r from-transparent to-slate-700"></div>
-        <div className="text-slate-500 text-[9px] font-black uppercase tracking-[0.4em] whitespace-nowrap">
-          MINECRAFT RANDOMIZER V5 • 26.2 READY
-=======
       <div className="mt-16 flex flex-col gap-4 items-center justify-center opacity-20 hover:opacity-100 transition-opacity duration-300">
         <div className="flex items-center gap-8 w-full max-w-xl">
           <div className="h-px flex-1 bg-gradient-to-r from-transparent to-slate-700"></div>
           <div className="text-slate-500 text-[9px] font-black uppercase tracking-[0.4em] whitespace-nowrap">
-            MINECRAFT RANDOMIZER V5 • 1.21.10 READY
+            MINECRAFT RANDOMIZER V5 • 26.2 READY
           </div>
           <div className="h-px flex-1 bg-gradient-to-l from-transparent to-slate-700"></div>
->>>>>>> 2e614e30b63f0692c10212cedfa1679351bb808f
         </div>
         <ViewCounter />
       </div>

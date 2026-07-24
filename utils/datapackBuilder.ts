@@ -43,7 +43,14 @@ export const buildDataPack = async (
 
   onProgress?.(45, "正在寫入 pack.mcmeta");
   if (customMcmeta) {
-    zip.file('pack.mcmeta', customMcmeta);
+    try {
+      const parsed = JSON.parse(customMcmeta);
+      if (!parsed.pack) parsed.pack = {};
+      parsed.pack.description = config.description;
+      zip.file('pack.mcmeta', JSON.stringify(parsed, null, 2));
+    } catch {
+      zip.file('pack.mcmeta', customMcmeta);
+    }
   } else {
     const packFormat = VERSION_FORMATS[config.version] || 48;
     zip.file("pack.mcmeta", JSON.stringify({
@@ -72,10 +79,12 @@ export const buildDataPack = async (
     const resultsPool = recipeFiles.map(f => f.content.result).filter(r => r !== undefined);
     const shuffledResults = random.shuffle([...resultsPool]);
     const recipePath = "data/minecraft/recipe/";
+    let resultIdx = 0;
     for (let i = 0; i < recipeFiles.length; i++) {
       const recipe = recipeFiles[i];
       if (recipe.content.result !== undefined) {
-        recipe.content.result = shuffledResults[i % shuffledResults.length];
+        recipe.content.result = shuffledResults[resultIdx % shuffledResults.length];
+        resultIdx++;
       }
       const fileName = recipe.name.endsWith('.json') ? recipe.name : `${recipe.name}.json`;
       zip.file(`${recipePath}${fileName}`, JSON.stringify(recipe.content, null, 2));

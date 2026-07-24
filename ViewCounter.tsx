@@ -8,13 +8,17 @@ const ViewCounter: React.FC = () => {
     // Using countapi.xyz with a specific namespace for this app
     // Namespace: minecraft-randomizer-v5, Key: visits
     fetch('https://api.countapi.xyz/hit/minecraft-randomizer-v5/visits')
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) return null;
+        return response.json();
+      })
       .then(data => {
-        setCount(data.value);
+        if (data && typeof data.value === 'number') {
+          setCount(data.value);
+        }
         setLoading(false);
       })
-      .catch(err => {
-        console.error("Error fetching view count:", err);
+      .catch(() => {
         setLoading(false);
       });
   }, []);
