@@ -1,5 +1,7 @@
 
 export const VERSION_FORMATS: Record<string, number> = {
+  '26.2': 107,
+  '26.1': 101, // 26.1 - 26.1.2
   '1.21.11': 94,
   '1.21.9': 88, // 1.21.9 - 1.21.10
   '1.21.7': 81, // 1.21.7 - 1.21.8
@@ -11,6 +13,8 @@ export const VERSION_FORMATS: Record<string, number> = {
 };
 
 export const VERSION_LABELS: Record<string, string> = {
+  '26.2': '26.2',
+  '26.1': '26.1 - 26.1.2',
   '1.21.11': '1.21.11',
   '1.21.9': '1.21.9 - 1.21.10',
   '1.21.7': '1.21.7 - 1.21.8',

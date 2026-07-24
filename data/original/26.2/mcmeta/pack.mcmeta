@@ -1,0 +1,17 @@
+{
+  "pack": {
+    "description": {
+      "text": "a random drop and recipe datapack",
+      "bold": true
+    },
+    "pack_format": 107,
+    "min_format": [
+      107,
+      1
+    ],
+    "max_format": [
+      107,
+      1
+    ]
+  }
+}
